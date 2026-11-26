@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SG-DMNMF — Research Project Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <div class="brand">
+      <span class="mark">SG</span>
+      <div>
+        <strong>SG-DMNMF</strong>
+        <small>Research project dashboard</small>
+      </div>
+    </div>
+    <span class="course-tag">{{ team.course }} · {{ team.institution }}</span>
+  </div>
+</header>
+
+<nav class="section-nav" aria-label="Sections">
+  <div class="container nav-inner">
+    <a href="#overview">Overview</a>
+    <a href="#methodology">Methodology</a>
+    <a href="#alpha-selection">Alpha Selection</a>
+    <a href="#experiments">Experiments</a>
+    <a href="#datasets">Datasets</a>
+    <a href="#results">Results</a>
+    <a href="#limitations">Limitations</a>
+    <a href="#about">About</a>
+  </div>
+</nav>
+
+<main class="container">
+
+  <!-- A. OVERVIEW --------------------------------------------------------- -->
+  <section id="overview" class="section">
+    <div class="hero">
+      <div class="hero-copy">
+        <p class="kicker">{{ team.team }} · {{ team.track }}</p>
+        <h1>Stability-Guided Deep Motif NMF<br>for Community Detection</h1>
+        <p class="lead">A label-free rule for choosing how strongly triangle motifs should
+          influence a deep non-negative matrix factorisation — selected from the
+          stability of the partition under graph perturbation.</p>
+        <div class="meta">
+          <span class="chip">Results generated {{ summary.generated_at }}</span>
+          <span class="chip">Run mode: {{ summary.mode }}</span>
+          {% if summary.environment %}<span class="chip">Python {{ summary.environment.python }} · PyTorch {{ summary.environment.torch }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <svg viewBox="0 0 220 150" role="img">
+          <g class="edges">
+            <line x1="38" y1="46" x2="104" y2="30"/><line x1="104" y1="30" x2="170" y2="52"/>
+            <line x1="38" y1="46" x2="62" y2="112"/><line x1="62" y1="112" x2="132" y2="120"/>
+            <line x1="132" y1="120" x2="170" y2="52"/><line x1="104" y1="30" x2="132" y2="120"/>
+            <line x1="104" y1="30" x2="62" y2="112"/>
+          </g>
+          <g class="nodes">
+            <circle cx="38" cy="46" r="8"/><circle cx="104" cy="30" r="8"/>
+            <circle cx="170" cy="52" r="8"/><circle cx="62" cy="112" r="8"/>
+            <circle cx="132" cy="120" r="8"/>
+          </g>
+        </svg>
+        <span class="visual-caption">nodes · edges · triangles</span>
+      </div>
+    </div>
+
+    <div class="grid grid-4">
+      <article class="card"><span class="card-num">01</span><h3>Research problem</h3>
+        <p>The base paper DMRA-NMF mixes ordinary edges with triangle motifs using a weight
+          <strong>α</strong>, but tunes that weight manually with ground-truth labels.</p></article>
+      <article class="card"><span class="card-num">02</span><h3>Research gap</h3>
+        <p>Real networks are usually unlabelled. In that setting there is no principled,
+          label-free way to choose α for a deep NMF model.</p></article>
+      <article class="card"><span class="card-num">03</span><h3>Proposed solution</h3>
+        <p>Subsample the graph twice, cluster both copies, and measure partition agreement
+          with <strong>Adjusted Mutual Information (AMI)</strong>.</p></article>
+      <article class="card"><span class="card-num">04</span><h3>Main contribution</h3>
+        <p>Select <strong>α* = argmax stability(α)</strong> without reading labels, then refit
+          once on the full graph. The rule is independent of the base factorisation.</p></article>
+    </div>
+
+    <div class="stats">
+      <div><strong>{{ overview.count }}</strong><span>datasets in this run</span></div>
+      <div><strong>{{ overview.nodes }}</strong><span>nodes analysed</span></div>
+      <div><strong>{{ overview.edges }}</strong><span>edges analysed</span></div>
+      <div><strong>{{ overview.labeled }}</strong><span>labeled datasets</span></div>
+      <div><strong>{{ overview.synthetic }}</strong><span>clearly marked synthetic</span></div>
+    </div>
+  </section>
+
+  <!-- B. METHODOLOGY ------------------------------------------------------ -->
+  <section id="methodology" class="section">
+    <div class="section-head"><p class="kicker">Methodology</p><h2>How the method works</h2>
+      <p>Four steps, from the raw adjacency matrix to the final community partition.</p></div>
+
+    <div class="steps">
+      <article class="step">
+        <span class="step-num">1</span>
+        <div><h3>Build the triangle motif matrix</h3>
+          <p>Each entry counts how many triangles an edge belongs to. Higher-order structure
+            is useful because triangles are a strong signal of a community.</p>
+          <div class="equation">B = A ∘ (A · A)</div>
+          <p class="equation-note">A · A counts two-hop paths; the element-wise product keeps
+            only paths that close a triangle. B is rescaled so max(B) = max(A).</p>
+        </div>
+      </article>
+      <article class="step">
+        <span class="step-num">2</span>
+        <div><h3>Combine edges and motifs with α</h3>
+          <p>α controls the trade-off: α = 0 uses only ordinary edges, α = 1 uses only motifs.</p>
+          <div class="equation">M(α) = (1 − α) A + α B</div>
+          <p class="equation-note">The same graph can therefore be viewed at different
+            "orders" of structure. The right α depends on the dataset.</p>
+        </div>
+      </article>
+      <article class="step">
+        <span class="step-num">3</span>
+        <div><h3>Factorise with deep NMF</h3>
+          <p>A product of non-negative layers learns a community representation Ψ. Laplacian
+            smoothness and a diagonal-dominance penalty keep communities coherent.</p>
+          <div class="equation">M ≈ Ψ W Ψᵀ , &nbsp; Ψ = H₁ H₂ … Hₚ</div>
+          <div class="equation">L = ‖M − ΨWΨᵀ‖² + λ·tr(ΨᵀL<sub>M</sub>Ψ) + μ·‖W ∘ (1 − I)‖²</div>
+          <p class="equation-note">Node labels are read as <code>argmax<sub>k</sub> Ψ[i, k]</code>.</p>
+        </div>
+      </article>
+      <article class="step">
+        <span class="step-num">4</span>
+        <div><h3>Choose α by perturbation stability</h3>
+          <p>Remove 20% of edges twice, fit the model on each copy, and compare the two
+            partitions with AMI. The most reproducible α is used on the full graph.</p>
+          <div class="equation">S(α) = AMI( C₁(α), C₂(α) ) , &nbsp; α* = argmax<sub>α</sub> S(α)</div>
+          <p class="equation-note">AMI is adjusted for chance, so stable partitions are not
+            rewarded merely for having many small clusters. No ground truth is used here.</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="callout">
+      <strong>Implementation scope.</strong> This is the symmetric, triangle-only,
+      Adam/softplus simplification named <em>DMRA-lite</em> — not an exact reproduction of
+      the asymmetric DMRA-NMF paper. The Experiments and Limitations sections state this
+      explicitly.
+    </div>
+  </section>
+
+  <!-- C. ALPHA SELECTION -------------------------------------------------- -->
+  <section id="alpha-selection" class="section">
+    <div class="section-head"><p class="kicker">Contribution</p><h2>Alpha selection</h2>
+      <p>How the motif weight is chosen without ever looking at labels.</p></div>
+
+    <div class="grid grid-2">
+      <div class="card prose">
+        <h3>What α means</h3>
+        <p>α is the mixing weight between the adjacency matrix and the triangle motif
+          matrix. Low α favours ordinary links; high α favours triangles.</p>
+        <h3>Candidate values</h3>
+        <div class="chips">
+          {% for a in candidates %}<span class="chip chip-accent">α = {{ a }}</span>{% else %}
+            <span class="chip">No candidates recorded</span>{% endfor %}
+        </div>
+        <h3>Why it must be selected</h3>
+        <p>The original paper sets α per dataset using labels. On an unlabelled network that
+          is impossible, and a poor α can hide the community structure.</p>
+        <h3>How perturbation and AMI work</h3>
+        <p>Two independent 80%-edge subsamples are clustered. AMI compares the resulting
+          partitions while correcting for agreement by chance; high AMI means the partition
+          is reproducible under small changes to the graph.</p>
+        <h3>Final selection</h3>
+        <p>The α with the highest mean stability is selected. Exact ties are broken using
+          full-graph modularity. The final model is then trained once with α*.</p>
+      </div>
+
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div><h3>Stability vs α</h3><p class="muted">Read directly from <code>e2_alpha_sensitivity.csv</code></p></div>
+          <label class="select-label">Dataset
+            <select id="alpha-dataset">
+              {% for ds in e2 %}<option value="{{ loop.index0 }}">{{ ds }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <svg id="stability-chart" class="chart" viewBox="0 0 640 300" role="img"
+             aria-label="Stability versus alpha line chart"></svg>
+        <div class="legend"><span class="legend-line"></span> Mean stability (AMI)
+          <span class="legend-dot"></span> Best α</div>
+        <figure class="figure-frame">
+          <img id="alpha-figure" alt="Generated alpha sensitivity figure"
+               {% if e2 %}{% set first = (e2.values() | first) %}{% if first.figure %}src="{{ url_for('figures', filename=first.figure) }}"{% endif %}{% endif %}>
+          <figcaption>Original matplotlib figure for the selected dataset.</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="findings">
+      <h3>What the stability curves show</h3>
+      <ul>{% for line in findings.e2 %}<li>{{ line }}</li>{% endfor %}</ul>
+    </div>
+
+    <div class="table-wrap">
+      <h3>Stability scores by dataset</h3>
+      {% for ds, rows in e2_table.items() %}
+      <details {% if loop.first %}open{% endif %}>
+        <summary>{{ ds }} <span class="muted">— {{ rows[0].Metric if rows else '' }}</span></summary>
+        <table>
+          <thead><tr><th>α</th><th>Evaluated score (mean ± std)</th><th>Stability (AMI)</th></tr></thead>
+          <tbody>
+            {% for r in rows %}<tr><td>{{ r.AlphaLabel }}</td><td>{{ r.Score }}</td><td>{{ r.StabilityLabel }}</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </details>
+      {% else %}<p class="empty">No alpha-sensitivity results yet.</p>{% endfor %}
+    </div>
+  </section>
+
+  <!-- D. EXPERIMENTS ------------------------------------------------------ -->
+  <section id="experiments" class="section">
+    <div class="section-head"><p class="kicker">Experiments</p><h2>What was tested</h2>
+      <p>Four experiments, each answering a different research question.</p></div>
+
+    <div class="grid grid-2">
+      <article class="card exp">
+        <div class="exp-head"><span class="exp-tag">E1</span><h3>Clean Benchmark</h3></div>
+        <p class="label">Objective</p><p>Compare SG-DMNMF with established baselines on clean graphs.</p>
+        <p class="label">What was tested</p><p>SymNMF, DANMF, DMoN-lite, Leiden, fixed α,
+          no-motif, the stability-selected α, and a label-using oracle (upper bound only).</p>
+        <p class="label">Findings</p>
+        <ul class="findings-list">{% for line in findings.e1 %}<li>{{ line }}</li>{% endfor %}</ul>
+        <a class="text-link" href="#results">Full benchmark tables →</a>
+      </article>
+
+      <article class="card exp">
+        <div class="exp-head"><span class="exp-tag">E2</span><h3>Alpha Sensitivity</h3></div>
+        <p class="label">Objective</p><p>Test whether the stability peak agrees with good
+          clustering performance and with the supervised oracle.</p>
+        <p class="label">What was tested</p><p>Every candidate α, plotting ACC/NMI (or
+          modularity when unlabelled) together with the stability score.</p>
+        <p class="label">Findings</p>
+        <ul class="findings-list">{% for line in findings.e2 %}<li>{{ line }}</li>{% endfor %}</ul>
+        <a class="text-link" href="#alpha-selection">See stability chart →</a>
+      </article>
+
+      <article class="card exp">
+        <div class="exp-head"><span class="exp-tag">E3</span><h3>Robustness</h3></div>
+        <p class="label">Objective</p><p>Check whether motif information helps when the graph
+          is corrupted by edge noise.</p>
+        <p class="label">What was tested</p><p>Random edge deletion, random edge addition,
+          and deletion of edges that participate in many triangles, at 10–40% noise.</p>
+        <p class="label">Findings</p>
+        <ul class="findings-list">{% for line in findings.e3 %}<li>{{ line }}</li>{% endfor %}</ul>
+        <p class="label">Charts</p>
+        <div class="chart-head compact">
+          <label class="select-label">Dataset
+            <select id="noise-dataset">
+              {% for ds in e3 %}<option value="{{ loop.index0 }}">{{ ds }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <svg id="noise-chart" class="chart small" viewBox="0 0 640 280" role="img"
+             aria-label="Robustness versus noise level chart"></svg>
+        <div class="legend" id="noise-legend"></div>
+      </article>
+
+      <article class="card exp">
+        <div class="exp-head"><span class="exp-tag">E4</span><h3>Ablation Study</h3></div>
+        <p class="label">Objective</p><p>Measure the contribution of each model component.</p>
+        <p class="label">What was tested</p><p>Removing the motif, the Laplacian smoothness
+          term or the diagonal penalty, plus factorisation depths 1, 2 and 3.</p>
+        <p class="label">Findings</p>
+        <ul class="findings-list">{% for line in findings.e4 %}<li>{{ line }}</li>{% endfor %}</ul>
+        <a class="text-link" href="#results">See ablation tables →</a>
+      </article>
+    </div>
+
+    <div class="figure-section">
+      <h3>Generated experiment figures</h3>
+      {% for ds in e3 %}
+      <details {% if loop.first %}open{% endif %}>
+        <summary>{{ ds }} — robustness under noise</summary>
+        <div class="gallery">
+          {% for f in figures if f.startswith('e3_robustness_' ~ ds ~ '_') %}
+          <figure class="gallery-item">
+            <a href="{{ url_for('figures', filename=f) }}" target="_blank" rel="noopener">
+              <img src="{{ url_for('figures', filename=f) }}" alt="{{ f }}" loading="lazy">
+            </a>
+            <figcaption>{{ f.split('_')[-1].replace('.png','') | title }}</figcaption>
+          </figure>
+          {% endfor %}
+        </div>
+      </details>
+      {% else %}<p class="empty">No robustness figures yet.</p>{% endfor %}
+
+      <details>
+        <summary>Alpha sensitivity figures</summary>
+        <div class="gallery">
+          {% for f in figures if f.startswith('e2_alpha_sensitivity_') %}
+          <figure class="gallery-item">
+            <a href="{{ url_for('figures', filename=f) }}" target="_blank" rel="noopener">
+              <img src="{{ url_for('figures', filename=f) }}" alt="{{ f }}" loading="lazy">
+            </a>
+            <figcaption>{{ f.replace('e2_alpha_sensitivity_','').replace('.png','') }}</figcaption>
+          </figure>
+          {% endfor %}
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- E. DATASETS --------------------------------------------------------- -->
+  <section id="datasets" class="section">
+    <div class="section-head"><p class="kicker">Data</p><h2>Datasets used in this run</h2>
+      <p>Real networks are used when available. Offline stand-ins are always marked as synthetic.</p></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Dataset</th><th>Nodes</th><th>Edges</th><th>Communities</th>
+          <th>Triangles</th><th>Source status</th><th>Labels</th></tr></thead>
+        <tbody>
+          {% for d in datasets %}
+          <tr>
+            <td><strong>{{ d.name }}</strong></td><td>{{ d.n }}</td><td>{{ d.edges }}</td>
+            <td>{{ d.k }}</td><td>{{ d.triangles }}</td>
+            <td>{% if d.synthetic %}<span class="badge badge-amber">offline synthetic</span>
+                {% else %}<span class="badge">real</span>{% endif %}</td>
+            <td>{% if d.labeled %}<span class="badge badge-blue">labeled</span>
+                {% else %}<span class="badge">unlabeled</span>{% endif %}</td>
+          </tr>
+          {% else %}<tr><td colspan="7" class="empty">No run has been recorded yet.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      Synthetic graphs are deterministic planted-community graphs generated only when the real
+      dataset cannot be loaded. They demonstrate that the pipeline works offline; they are
+      <strong>not</strong> used to claim state-of-the-art performance. A real graph with no
+      authentic community attribute (the Dolphin GML) is returned unlabeled and evaluated with
+      modularity instead of invented labels.
+    </div>
+  </section>
+
+  <!-- F. RESULTS --------------------------------------------------------- -->
+  <section id="results" class="section">
+    <div class="section-head"><p class="kicker">Results</p><h2>Full result tables</h2>
+      <p>Values are mean ± standard deviation over seeds, read directly from the CSV files.</p></div>
+
+    <div class="table-wrap">
+      <h3>E1 — Clean benchmark</h3>
+      {% for ds, rows in e1.items() %}
+      <details {% if loop.first %}open{% endif %}>
+        <summary>{{ ds }}</summary>
+        <table>
+          <thead><tr><th>Method</th><th>ACC</th><th>NMI</th><th>ARI</th><th>AMI</th><th>Modularity</th></tr></thead>
+          <tbody>
+            {% for r in rows %}
+            <tr class="{% if r.best %}row-best{% elif r.ours %}row-ours{% endif %}">
+              <td>{{ r.Method }}{% if r.best %} <span class="badge badge-blue">best</span>{% endif %}</td>
+              <td>{{ r.ACC }}</td><td>{{ r.NMI }}</td><td>{{ r.ARI }}</td>
+              <td>{{ r.AMI }}</td><td>{{ r.Modularity }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+      {% else %}<p class="empty">No benchmark results yet.</p>{% endfor %}
+    </div>
+
+    <div class="table-wrap">
+      <h3>E4 — Ablation configurations</h3>
+      {% for ds, rows in e4.items() %}
+      <details>
+        <summary>{{ ds }}</summary>
+        <table>
+          <thead><tr><th>Configuration</th><th>ACC</th><th>NMI</th><th>ARI</th><th>AMI</th><th>Modularity</th></tr></thead>
+          <tbody>
+            {% for r in rows %}<tr><td>{{ r.Config }}</td><td>{{ r.ACC }}</td><td>{{ r.NMI }}</td>
+              <td>{{ r.ARI }}</td><td>{{ r.AMI }}</td><td>{{ r.Modularity }}</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </details>
+      {% else %}<p class="empty">No ablation results yet.</p>{% endfor %}
+    </div>
+
+    <div class="downloads">
+      <h3>Download raw results</h3>
+      <div class="download-links">
+        {% for c in csv_files %}<a class="download" href="{{ url_for('results', filename=c) }}">{{ c }}</a>{% endfor %}
+        <a class="download" href="{{ url_for('results', filename='summary.json') }}">summary.json</a>
+      </div>
+      <p class="muted">API: <a href="{{ url_for('api_results') }}">/api/results</a></p>
+    </div>
+  </section>
+
+  <!-- G. LIMITATIONS ------------------------------------------------------ -->
+  <section id="limitations" class="section">
+    <div class="section-head"><p class="kicker">Scope</p><h2>Research limitations</h2>
+      <p>These limitations are stated openly in the project report and dashboard.</p></div>
+    <div class="grid grid-2">
+      <div class="card prose">
+        <h3>Model simplification</h3>
+        <p>The implementation is a <strong>symmetric, triangle-only, Adam/softplus
+          DMRA-lite</strong> model. It is not an exact reproduction of the original
+          asymmetric DMRA-NMF paper; the novel selection rule is independent of that choice.</p>
+        <h3>Assumptions</h3>
+        <p>The number of communities k is assumed known — taken from genuine labels when
+          present, otherwise estimated by modularity optimisation. Only undirected graphs
+          and triangle motifs are supported.</p>
+      </div>
+      <div class="card prose">
+        <h3>Baselines and data</h3>
+        <p>DMoN-lite optimises the modularity objective without a GNN encoder. Cora and
+          Citeseer need <code>torch-geometric</code>; otherwise clearly marked synthetic
+          stand-ins are used.</p>
+        <h3>Reporting</h3>
+        <p>The CP1 report planned degree-normalised matrices and Wilcoxon tests. The code
+          uses the raw mixed matrix (suited to symmetric NMF), reports mean ± standard
+          deviation, and leaves significance testing as future work.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- H. ABOUT ------------------------------------------------------------ -->
+  <section id="about" class="section">
+    <div class="section-head"><p class="kicker">About</p><h2>Project information</h2></div>
+    <div class="grid grid-2">
+      <div class="card prose">
+        <h3>Project title</h3><p>{{ team.title }}</p>
+        <h3>Research objective</h3>
+        <p>Remove the dependence on ground-truth labels when tuning the motif weight of a
+          deep NMF community detection model.</p>
+        <h3>Main contribution</h3>
+        <p>An unsupervised, perturbation-stability selection rule based on AMI, evaluated
+          against fixed α, no-motif, oracle and standard baselines.</p>
+      </div>
+      <div class="card prose">
+        <h3>Team and course</h3>
+        <ul class="kv">
+          <li><span>Student</span><strong>{{ team.name }}</strong></li>
+          <li><span>Roll number</span><strong>{{ team.roll }}</strong></li>
+          <li><span>Mode</span><strong>{{ team.team }}</strong></li>
+          <li><span>Course</span><strong>{{ team.course }}</strong></li>
+          <li><span>Institution</span><strong>{{ team.institution }}</strong></li>
+          <li><span>Instructor</span><strong>{{ team.instructor }}</strong></li>
+        </ul>
+        <h3>Technologies</h3>
+        <div class="chips">
+          <span class="chip">Python</span><span class="chip">Flask</span>
+          <span class="chip">PyTorch</span><span class="chip">NumPy</span>
+          <span class="chip">SciPy</span><span class="chip">scikit-learn</span>
+          <span class="chip">NetworkX</span><span class="chip">matplotlib</span>
+          <span class="chip">pandas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    SG-DMNMF · Stability-guided selection of the motif weight in deep NMF-based community detection.
+    <span>Research dashboard · data loaded from results/ and figures/</span>
+  </div>
+</footer>
+
+<script id="alpha-data" type="application/json">{{ e2 | tojson }}</script>
+<script id="noise-data" type="application/json">{{ e3 | tojson }}</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

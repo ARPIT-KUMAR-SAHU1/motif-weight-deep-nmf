@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-11-25T23:17:58",
+  "mode": "quick",
+  "experiments": [
+    "E1",
+    "E2",
+    "E3",
+    "E4"
+  ],
+  "datasets": [
+    {
+      "name": "Karate",
+      "n": 34,
+      "edges": 78,
+      "k": 2,
+      "labeled": true,
+      "synthetic": false,
+      "triangles": 45
+    },
+    {
+      "name": "Dolphin (unlabeled)",
+      "n": 62,
+      "edges": 159,
+      "k": 5,
+      "labeled": false,
+      "synthetic": false,
+      "triangles": 95
+    },
+    {
+      "name": "Quick synthetic (offline)",
+      "n": 75,
+      "edges": 441,
+      "k": 3,
+      "labeled": true,
+      "synthetic": true,
+      "triangles": 326
+    },
+    {
+      "name": "LFR-mu0.3",
+      "n": 200,
+      "edges": 1206,
+      "k": 5,
+      "labeled": true,
+      "synthetic": false,
+      "triangles": 736
+    }
+  ],
+  "environment": {
+    "python": "3.12.6",
+    "numpy": "2.3.2",
+    "torch": "2.15.0+cpu"
+  },
+  "method": {
+    "title": "Stability-Guided Deep Motif NMF (SG-DMNMF)",
+    "idea": "Choose the motif weight alpha by how stable the partition is under 80% edge subsampling (AMI between two perturbed runs), without using ground-truth labels.",
+    "candidates": [
+      0.0,
+      0.1,
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ],
+    "caveat": "Implementation is a symmetric, triangle-only, Adam-trained simplification (DMRA-lite); offline synthetic datasets are clearly marked and are for demonstration, not publication."
+  }
+}

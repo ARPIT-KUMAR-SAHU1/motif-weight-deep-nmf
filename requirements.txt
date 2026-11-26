@@ -1,0 +1,15 @@
+numpy>=1.24
+scipy>=1.10
+scikit-learn>=1.2
+matplotlib>=3.7
+pandas>=2.0
+networkx>=3.1
+torch>=2.0
+flask>=2.3
+# Optional — real Cora/Citeseer loading:
+# torch-geometric
+# Optional — real Leiden (otherwise NetworkX Louvain is used):
+# python-igraph
+# leidenalg
+# Optional — pytest also runs the unittest suite:
+# pytest

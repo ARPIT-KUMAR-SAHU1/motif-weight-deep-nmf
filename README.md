@@ -14,6 +14,14 @@ read at any point.
 
 ---
 
+## Repository and Colab
+
+- **GitHub:** https://github.com/ARPIT-KUMAR-SAHU1/motif-weight-deep-nmf (branch `feature/complete-project`)
+- **Google Colab:** https://colab.research.google.com/github/ARPIT-KUMAR-SAHU1/motif-weight-deep-nmf/blob/feature/complete-project/colab/SG_DMNMF_Colab.ipynb
+
+The Colab notebook clones this repository automatically and runs the whole quick pipeline.
+The earlier Drive link contained an empty notebook with a single blank cell.
+
 ## 1. Quick start
 
 ```bash
